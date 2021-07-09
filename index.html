@@ -418,107 +418,108 @@ when it receives a particular <a>command</a>.
  However the exact details of how this <a>connection</a> works
  and how it is established are out of scope.
 
-<p>After such a <a>connection</a> has been established,
- a <a>remote end</a> must run the following steps:</p>
+<p>After a <a>connection</a> is established, the remote end must run
+the following steps:
 
 <ol>
- <li><p><a>Read bytes</a> from the <a>connection</a> until a
-  complete <a>HTTP request</a> can be constructed from the data.
-  Let <var>request</var> be a <a>request</a> constructed from the
-  received data, according to the requirements of [[RFC7230]]. If it
-  is not possible to construct a complete <a>HTTP request</a>,
-  the <a>remote end</a> must either close the <a>connection</a>,
-  return an HTTP response with status code 500, or return
-  an <a>error</a> with <a>error code</a> <a>unknown error</a>.
-
- <li><p>Let <var>request match</var> be the result of the algorithm
-  to <a>match a request</a> with <var>request</var>’s
-  <a>method</a> and <a>URL</a> as arguments.
-
- <li><p>If <var>request match</var> is of type <a>error</a>,
-  <a>send an error</a> with <var>request match</var>’s <a>error code</a>
-  and jump to step 1.
-
-  <p>Otherwise, let <var>command</var> and <var>command parameters</var>
-   be <var>request match</var>’s data. Let <var>url variables</var> be a
-   <a>url variables</a> dictionary mapping the <var>command parameters</var>
-   to their corresponding values.
-
-  <li><p>If <var>session id</var> is among the variables defined by <var>command parameters</var>:
-
-   <p class=note>This condition is intended to exclude the <a>New Session</a> and <a>Status</a>
-    <a>commands</a> and any <a>extension commands</a> which do not operate on a particular <a>session</a>.
+ <li>While the <a>connection</a> is not closed:</p>
 
   <ol>
-   <li><p>Let <var>session id</var> be the corresponding variable
-    from <var>command parameters</var>.
+   <li><p><a>Read bytes</a> from the <a>connection</a> until a
+    complete <a>HTTP request</a> can be constructed from the data.
+    Let <var>request</var> be a <a>request</a> constructed from the
+    received data, according to the requirements of [[RFC7230]]. If it
+    is not possible to construct a complete <a>HTTP request</a>,
+    the <a>remote end</a> must either close the <a>connection</a>,
+    return an HTTP response with status code 500, or return
+    an <a>error</a> with <a>error code</a> <a>unknown error</a>.
 
-   <li><p>Let the <a>current session</a> be the <a>session</a>
-    with <a data-lt="session id">ID</a> <var>session id</var>
-    in the list of <a>active sessions</a>,
-    or <a><code>null</code></a> if there is no such matching <a>session</a>.
+   <li><p>Let <var>request match</var> be the result of the algorithm
+    to <a>match a request</a> with <var>request</var>’s
+    <a>method</a> and <a>URL</a> as arguments.
 
-   <li><p>If the <a>current session</a> is <a><code>null</code></a>
-   <a>send an error</a> with <a>error code</a> <a>invalid session id</a>,
-   then jump to step 1 in this overall algorithm.
+   <li><p>If <var>request match</var> is of type <a>error</a>,
+    <a>send an error</a> with <var>request match</var>’s <a>error code</a>
+    and continue.
 
-   <li><p>If the <a>current session</a> is not <a><code>null</code></a>:
+    <p>Otherwise, let <var>command</var> and <var>URL variables</var>
+     be <var>request match</var>’s data.
+
+    <li><p>Let <var>session</var> be null.
+
+    <li><p>If <var>URL variables</var> has an item named session id:
+
+     <p class=note>This condition is intended to exclude the <a>New Session</a> and <a>Status</a>
+      <a>commands</a> and any <a>extension commands</a> which do not operate on a particular <a>session</a>.
+
+     <ol>
+       <li><p>Let <var>session id</var> be <var>URL variables</var>'s session id.
+
+       <li><p>For each <var>active session</var> in the list of <a>active sessions</a>:
+       <ol>
+         <li><p>If <var>active session</var>'s <a>session ID</a> is equal
+             to <var>session id</var>, then let <var>session</var>
+             be <var>active session</var>, and break.
+       </ol>
+
+       <li><p>If the <var>session</var> is <a><code>null</code></a>
+       <a>send an error</a> with <a>error code</a> <a>invalid session id</a>,
+       then continue.
+
+    </ol>
+
+    <li><p>Enqueue a task on <a>remote end</a>'s <a>request queue</a> to run the following
+    steps:
 
     <ol>
-      <li><p>Enqueue <var>request</var>
-       in the <a>current session</a>’s <a>request queue</a>.
+      <li>If <a>session</a> is no longer in the list of <a>active
+      sessions</a>, then return.
 
-      <li><p>Wait until the first element
-       in the <a>current session</a>’s <a>request queue</a>
-       is <var>request</var>:
+      <li><p>Let <var>parameters</var> be <a><code>null</code></a>.
 
-      <li><p>Dequeue <var>request</var> from the <a>current session</a>’s <a>request queue</a>.
+      <li><p>If <var>request</var>’s <a>method</a> is POST:
 
-      <li><p>If the list of <a>active sessions</a> no longer contains the <a>current session</a>,
-       set the <a>current session</a> to <a><code>null</code></a>.
-    </ol>
+       <ol>
+        <li><p>Let <var>parse result</var> be the result of
+         <a>parsing as JSON</a> with <var>request</var>’s
+         <a>body</a> as the argument. If this process throws an exception,
+         return an <a>error</a> with <a>error code</a> <a>invalid
+         argument</a> and jump back to step 1 in this overall algorithm.
+
+        <li><p>If <var>parse result</var> is not an <a>Object</a>,
+         <a>send an error</a> with <a>error code</a> <a>invalid argument</a>
+         and jump back to step 1 in this overall algorithm.
+
+         <p>Otherwise, let <var>parameters</var> be <var>parse result</var>.
+       </ol>
+
+      <li><p>Let <var>navigate result</var></a> be the result
+       of <a>wait for navigation to complete</a>.
+
+      <li><p>If <var>navigate result</var> is an <a>error</a>,
+       <a>send an error</a> with <a>error code</a>
+       equal to <var>navigate result</var>’s <a>error code</a>
+       and return.
+
+      <li><p>Let <var>response result</var> be the return value
+       obtained by running the <a>remote end steps</a>
+       for <var>command</var> with <var>session</var>, <var>URL
+       variables</var>, and <var>parameters</var>.
+
+      <li><p>If <var>response result</var> is an <a>error</a>,
+       <a>send an error</a> with <a>error code</a>
+       equal to <var>response result</var>’s <a>error code</a>
+       and return.
+
+       <li><p>Assert: <var>response result</var> is a <a>success</a>.
+
+       <li><p>Let <var>response data</var> be <var>response result</var>’s data.
+
+       <li><p><a>Send a response</a> with status 200 and <var>response data</var>.
+     </ol>
+    </li>
   </ol>
-
- <li><p>If <var>request</var>’s <a>method</a> is POST:
-
-  <ol>
-   <li><p>Let <var>parse result</var> be the result of
-    <a>parsing as JSON</a> with <var>request</var>’s
-    <a>body</a> as the argument. If this process throws an exception,
-    return an <a>error</a> with <a>error code</a> <a>invalid
-    argument</a> and jump back to step 1 in this overall algorithm.
-
-   <li><p>If <var>parse result</var> is not an <a>Object</a>,
-    <a>send an error</a> with <a>error code</a> <a>invalid argument</a>
-    and jump back to step 1 in this overall algorithm.
-
-    <p>Otherwise, let <var>parameters</var> be <var>parse result</var>.
-  </ol>
-
-  <p>Otherwise, let <var>parameters</var> be <a><code>null</code></a>.
-
- <li><p><a>Wait for navigation to complete</a>. If this returns
-  an <a>error</a> <a data-lt="send an error">return its value</a> and
-  jump to step 1 in this overall algorithm, otherwise continue.
-
- <li><p>Let <var>response result</var> be the return value
-  obtained by running the <a>remote end steps</a> for <var>command</var>
-  with an argument named <var>url variables</var> whose value is
-  <var>url variables</var> and an
-  additional argument named <var>parameters</var> whose value is
-  <var>parameters</var>.
-
- <li><p>If <var>response result</var> is an <a>error</a>,
-  <a>send an error</a> with <a>error code</a>
-  equal to <var>response result</var>’s <a>error code</a>
-  and jump back to step 1 in this overall algorithm.
-
-  <p>Otherwise, if <var>response result</var> is a <a>success</a>,
-   let <var>response data</var> be <var>response result</var>’s data.
-
- <li><p><a>Send a response</a> with status 200 and <var>response data</var>.
-
- <li><p>Jump to step 1.
+ </li>
 </ol>
 
 <p>When required to <dfn>send an error</dfn>,
@@ -594,9 +595,7 @@ when it receives a particular <a>command</a>.
  <li><p><a data-lt="write bytes">Write</a> <var>response bytes</var>
   to the <a>connection</a>.
 </ol>
-<p>A <dfn data-lt="url variables">url variable</dfn> dictionary is defined
-  as the mapping of a <a>command</a>’s <a>URI template</a> variable names
-  to their corresponding values.
+
 </section> <!-- /Processing model -->
 
 <section>
@@ -628,10 +627,10 @@ when it receives a particular <a>command</a>.
  <li><p>Let <var>endpoints</var> be a list
   containing each row in the <a>table of endpoints</a>.
 
- <li><p>Remove each entry from <var>endpoints</var>
-  for which the concatenation of the <a>URL prefix</a>
-  and the entry’s <a>URI template</a>
-  does not match <var>URL</var>’s <a>path</a>.
+ <li><p>Remove each entry from <var>endpoints</var> for which the
+  concatenation of the <a>URL prefix</a> and the entry’s <a>URI
+  template</a> does not have a valid expansion equal to
+  to <var>URL</var>’s <a>path</a>.
 
  <li><p>If there are no entries in <var>endpoints</var>,
   return <a>error</a> with <a>error code</a> <a>unknown command</a>.
@@ -646,13 +645,19 @@ when it receives a particular <a>command</a>.
  <li><p>There is now exactly one entry in <var>endpoints</var>;
   let <var>entry</var> be this entry.
 
- <li><p>Let <var>parameters</var> be the result of extracting the variables
-  from <var>URL</var> using <var>entry</var>’s <a>URI template</a>.
+ <li><p>Let <var>URI template</var> be the concatenation of <a>URL
+ prefix</a> with <var>entry</var>'s <var>URI template</var>.
 
  <li><p>Let <var>command</var> be <var>entry</var>’s <a>command</a>.
 
+ <li><p>Let <var>URL variables</var> be a struct with one item for
+ each variable defined in <var>URI template</var>, with the item name
+ equal to the template variable name, and the item value being the
+ variable value required to expand the <var>URI template</var> to
+ match <var>URL</var>'s <a>path</a>.
+
  <li><p>Return <a>success</a> with data
-  <var>command</var> and <var>parameters</var>.
+  <var>command</var> and <var>URL variables</var>.
 </ol>
 </section> <!-- /Routing requests -->
 
@@ -2349,7 +2354,8 @@ If the creation fails, a <a>session not created</a> <a>error</a> is returned.
 ]</pre>
 </aside>
 
-<p>The <a>remote end steps</a> are:
+<p>The <a>remote end steps</a>, given <var>session</var>, <var>URL
+variables</var> and <var>parameters</var> are:
 
 <ol>
   <li><p>If the <a>maximum active sessions</a> is equal to
@@ -2494,7 +2500,8 @@ If the creation fails, a <a>session not created</a> <a>error</a> is returned.
  </tr>
 </table>
 
-<p>The <a>remote end steps</a> are:
+<p>The <a>remote end steps</a>, given <var>session</var>, <var>URL
+variables</var> and <var>parameters</var> are:
 
 <ol>
  <li><p>If the <a>current session</a> is an <a>active session</a>,
@@ -2539,7 +2546,8 @@ If the creation fails, a <a>session not created</a> <a>error</a> is returned.
  <code>ready</code> and <code>message</code>
  are reserved and must not be overwritten.
 
-<p>The <a>remote end steps</a> are:</p>
+<p>The <a>remote end steps</a>, given <var>session</var>, <var>URL
+variables</var> and <var>parameters</var> are:
 
 <ol>
  <li><p>Let <var>body</var> be a new JSON <a>Object</a>
@@ -2719,8 +2727,8 @@ Return <a>success</a> with data <var>timeouts</var>.
  </tr>
 </table>
 
-<p>
-The <a>remote end step</a> are:
+<p>The <a>remote end steps</a>, given <var>session</var>, <var>URL
+variables</var> and <var>parameters</var> are:
 
 <ol>
  <li><p>Let <var>timeouts</var> be the <a>timeouts object</a> for
@@ -2745,14 +2753,14 @@ The <a>remote end step</a> are:
  </tr>
 </table>
 
-<p>
-The <a>remote end steps</a> are:
+<p>The <a>remote end steps</a>, given <var>session</var>, <var>URL
+variables</var> and <var>parameters</var> are:
 
 <ol>
 <li><p>
 Let <var>timeouts</var> be the result of <a>trying</a> to
 <a>JSON deserialize</a> as a <a>timeouts configuration</a>
-the request’s <var>parameters</var>.
+with <var>parameters</var>.
 
 <li><p>
 Make the <a>session timeouts</a> the new <var>timeouts</var>.
@@ -2929,27 +2937,27 @@ Return <a>success</a> with data <a><code>null</code></a>.
  <pre>{"url": "https://example.com"}</pre>
 </aside>
 
-<p>The <a>remote end steps</a> are:
+<p>The <a>remote end steps</a>, given <var>session</var>, <var>URL
+variables</var> and <var>parameters</var> are:
 
 <ol>
  <li><p>If the <a>current top-level browsing context</a> is <a>no longer open</a>,
   return <a>error</a> with <a>error code</a> <a>no such window</a>.
 
- <li><p>Let <var>url</var> be the result of
-  <a>getting the property</a> <code>url</code>
-  from the <var>parameters</var> argument.
+ <li><p>Let <var>URL</var> be the result of <a>getting a property</a>
+  named "<code>url</code>" from <var>parameters</var>.
 
- <li><p>If <var>url</var> is not an <a>absolute URL</a>
+ <li><p>If <var>URL</var> is not an <a>absolute URL</a>
   or is not an <a>absolute URL with fragment</a> or not a
-  <a>local scheme</a>,
-  return <a>error</a> with <a>error code</a> <a>invalid argument</a>.
+  <a>local scheme</a>, return <a>error</a> with <a>error
+  code</a> <a>invalid argument</a>.
 
  <li><p><a>Handle any user prompts</a> and return its value if it is an <a>error</a>.
 
  <li><p>Let <var>current URL</var> be the <a>current top-level browsing context</a>’s
  <a>active document</a>’s <a>document URL</a>.
 
- <li><p>If <var>current URL</var> and <var>url</var> do not have the same
+ <li><p>If <var>current URL</var> and <var>URL</var> do not have the same
    <a>absolute URL</a>:
 
    <ol>
@@ -2960,9 +2968,9 @@ Return <a>success</a> with data <a><code>null</code></a>.
        with <a>error code</a> <a>timeout</a>.
    </ol>
 
- <li><p><a>Navigate</a> the <a>current top-level browsing context</a> to <var>url</var>.
+ <li><p><a>Navigate</a> <var>session</a>'s <a>current top-level browsing context</a> to <var>URL</var>.
 
- <li><p>If <var>url</var> <a>is special</a> except for <code>file</code> and
+ <li><p>If <var>URL</var> <a>is special</a> except for <code>file</code> and
    <var>current URL</var> and <var>URL</var> do not have the same <a>absolute URL</a> :
  <ol>
   <li><p><a>Try</a> to <a>wait for navigation to complete</a>.
@@ -2997,7 +3005,8 @@ Return <a>success</a> with data <a><code>null</code></a>.
  </tr>
 </table>
 
-<p>The <a>remote end steps</a> are:
+<p>The <a>remote end steps</a>, given <var>session</var>, <var>URL
+variables</var> and <var>parameters</var> are:
 
 <ol>
  <li><p>If the <a>current top-level browsing context</a> is <a>no longer open</a>,
@@ -3009,7 +3018,7 @@ Return <a>success</a> with data <a><code>null</code></a>.
   of the <a>current top-level browsing context</a>’s
   <a>active document</a>’s <a>document URL</a>.
 
- <li><p>Return <a>success</a> with data <var>url</var>.
+ <li><p>Return <a>success</a> with data <var>URL</var>.
 </ol>
 </section>
 
@@ -3033,7 +3042,8 @@ Return <a>success</a> with data <a><code>null</code></a>.
  This is equivalent to pressing the back button in the <a>browser chrome</a>
  or invoking <code>window.history.back</code>.
 
-<p>The <a>remote end steps</a> are:
+<p>The <a>remote end steps</a>, given <var>session</var>, <var>URL
+variables</var> and <var>parameters</var> are:
 
 <ol>
  <li><p>If the <a>current top-level browsing context</a> is <a>no longer open</a>,
@@ -3078,7 +3088,8 @@ Return <a>success</a> with data <a><code>null</code></a>.
  This is equivalent to pressing the forward button in the <a>browser chrome</a>
  or invoking <code>window.history.forward</code>.
 
-<p>The <a>remote end steps</a> are:
+<p>The <a>remote end steps</a>, given <var>session</var>, <var>URL
+variables</var> and <var>parameters</var> are:
 
 <ol>
  <li><p>If the <a>current top-level browsing context</a> is <a>no longer open</a>,
@@ -3120,7 +3131,8 @@ Return <a>success</a> with data <a><code>null</code></a>.
 <p class=note>This command causes the browser
  to reload the page in the <a>current top-level browsing context</a>.
 
-<p>The <a>remote end steps</a> are:
+<p>The <a>remote end steps</a>, given <var>session</var>, <var>URL
+variables</var> and <var>parameters</var> are:
 
 <ol>
  <li><p>If the <a>current top-level browsing context</a> is <a>no longer open</a>,
@@ -3132,7 +3144,7 @@ Return <a>success</a> with data <a><code>null</code></a>.
    context</a>’s <a>active document</a>.
  </li>
 
- <li><p>If <var>url</var> <a>is special</a> except for <code>file</code>:
+ <li><p>If <var>URL</var> <a>is special</a> except for <code>file</code>:
   <ol>
    <li><p><a>Try</a> to <a>wait for navigation to complete</a>.
 
@@ -3164,7 +3176,8 @@ Return <a>success</a> with data <a><code>null</code></a>.
  of the <a>current top-level browsing context</a>,
  equivalent to calling <code>document.title</code>.
 
-<p>The <a>remote end steps</a> are:
+<p>The <a>remote end steps</a>, given <var>session</var>, <var>URL
+variables</var> and <var>parameters</var> are:
 
 <ol>
  <li><p>If the <a>current top-level browsing context</a> is <a>no longer open</a>,
@@ -3274,7 +3287,8 @@ commands are unaffected by whether the operating system window has focus or not.
  </tr>
 </table>
 
-<p>The <a>remote end steps</a> are:
+<p>The <a>remote end steps</a>, given <var>session</var>, <var>URL
+variables</var> and <var>parameters</var> are:
 
 <ol>
  <li><p>If the <a>current top-level browsing context</a> is <a>no longer open</a>,
@@ -3299,7 +3313,8 @@ commands are unaffected by whether the operating system window has focus or not.
  </tr>
 </table>
 
-<p>The <a>remote end steps</a> are:
+<p>The <a>remote end steps</a>, given <var>session</var>, <var>URL
+variables</var> and <var>parameters</var> are:
 
 <ol>
  <li><p>If the <a>current top-level browsing context</a> is <a>no longer open</a>,
@@ -3312,8 +3327,10 @@ commands are unaffected by whether the operating system window has focus or not.
  <li><p>If there are no more open <a>top-level browsing contexts</a>,
   then <a>try</a> to <a>close the session</a>.
 
- <li>Return the result of running the <a>remote end steps</a>
-  for the <a>Get Window Handles</a> <a>command</a>.
+ <li>Return the result of running the <a>remote end steps</a> for
+  the <a>Get Window Handles</a> <a>command</a>,
+  with <var>session</var>, <var>URL variables</var>
+  and <var>parameters</var>.
 </ol>
 </section> <!-- /Close Window -->
 
@@ -3332,17 +3349,18 @@ commands are unaffected by whether the operating system window has focus or not.
 </table>
 
 <p class=note>
-Switching window will select the <a>current top-level browsing context</a>
-used as the target for all subsequent <a>commands</a>.
-In a tabbed browser, this will typically
+Switching window will select <var>session</a>'s <a>current top-level
+browsing context</a> used as the target for all
+subsequent <a>commands</a>.  In a tabbed browser, this will typically
 make the tab containing the <a>browsing context</a> the selected tab.
 
-<p>The <a>remote end steps</a> are:
+<p>The <a>remote end steps</a>, given <var>session</var>, <var>URL
+variables</var> and <var>parameters</var> are:
 
 <ol>
  <li><p>Let <var>handle</var> be the result of
   <a>getting the property</a> "<code>handle</code>"
-  from the <var>parameters</var> argument.
+  from <var>parameters</var>.
 
  <li><p>If <var>handle</var> is <a>undefined</a>,
   return <a>error</a> with <a>error code</a> <a>invalid argument</a>.
@@ -3383,7 +3401,8 @@ make the tab containing the <a>browsing context</a> the selected tab.
 
 <p>The order in which the window handles are returned is arbitrary.
 
-<p>The <a>remote end steps</a> are:
+<p>The <a>remote end steps</a>, given <var>session</var>, <var>URL
+variables</var> and <var>parameters</var> are:
 
 <ol>
  <li><p>Let <var>handles</var> be a JSON <a>List</a>.
@@ -3418,7 +3437,8 @@ make the tab containing the <a>browsing context</a> the selected tab.
 
 <p>Create a new <a>top-level browsing context</a>.
 
-<p>The <a>remote end steps</a> are:
+<p>The <a>remote end steps</a>, given <var>session</var>, <var>URL
+variables</var> and <var>parameters</var> are:
 
 <ol>
  <li><p>If the implementation does not support creating new top-level
@@ -3431,10 +3451,10 @@ make the tab containing the <a>browsing context</a> the selected tab.
  <li><p><a>Handle any user prompts</a> and return its value if it is an <a>error</a>.
 
  <li><p>Let <var>type hint</var> be the result of <a>getting the property</a>
-  "<code>type</code>" from the <var>parameters</var> argument.
+  "<code>type</code>" from <var>parameters</var>.
 
  <li><p>Create a new <a>top-level browsing context</a> by running
-  the <a>window open steps</a> with <var>url</var> set to
+  the <a>window open steps</a> with <var>URL</var> set to
   "<code>about:blank</code>", <var>target</var> set to the empty
   string, and <var>features</var> set to "<code>noopener</code>" and
   the user agent configured to create a new browsing context. This must
@@ -3491,12 +3511,13 @@ make the tab containing the <a>browsing context</a> the selected tab.
  of the <a>current browsing context</a> to use as the <a>current browsing context</a>
  for subsequent <a>commands</a>.
 
-<p>The <a>remote end steps</a> are:
+The <a>remote end steps</a>, given <var>session</var>, <var>URL
+variables</var> and <var>parameters</var> are:
 
 <ol>
  <li><p>Let <var>id</var> be the result of
   <a>getting the property</a> "<code>id</code>"
-  from the <var>parameters</var> argument.
+  from <var>parameters</var>.
 
  <li><p>If <var>id</var> is not <a><code>null</code></a>,
   a <code>Number</code> object,
@@ -3606,7 +3627,8 @@ make the tab containing the <a>browsing context</a> the selected tab.
  sets the <a>current browsing context</a> for future <a>commands</a>
  to the parent of the <a>current browsing context</a>.
 
-<p>The <a>remote end steps</a> are:
+<p>The <a>remote end steps</a>, given <var>session</var>, <var>URL
+variables</var> and <var>parameters</var> are:
 
 <ol>
  <li><p>Run the substeps if the <a>current browsing context</a> is already the
@@ -3779,7 +3801,8 @@ with the following properties:
  of the operating system window corresponding
  to the <a>current top-level browsing context</a>.
 
-<p>The <a>remote end steps</a> are:
+<p>The <a>remote end steps</a>, given <var>session</var>, <var>URL
+variables</var> and <var>parameters</var> are:
 
 <ol>
  <li><p>If the <a>current top-level browsing context</a> is <a>no longer open</a>,
@@ -3811,7 +3834,8 @@ The <a>Set Window Rect</a> <a>command</a>
 alters the size and the position of the operating system window
 corresponding to the <a>current top-level browsing context</a>.
 
-<p>The <a>remote end steps</a> are:
+<p>The <a>remote end steps</a>, given <var>session</var>, <var>URL
+variables</var> and <var>parameters</var> are:
 
 <ol>
  <li><p>Let <var>width</var> be the result of
@@ -3819,15 +3843,15 @@ corresponding to the <a>current top-level browsing context</a>.
   from the <var>parameters</var> argument, else let it be <a><code>null</code></a>.
 
  <li><p>Let <var>height</var> be the result of
-  <a>getting a property</a> named <code>height</code>
-  from the <var>parameters</var> argument, else let it be <a><code>null</code></a>.
+  <a>getting a property</a> named "<code>height</code>"
+  from <var>parameters</var>, else let it be <a><code>null</code></a>.
 
  <li><p>Let <var>x</var> be the result of <a>getting a property</a>
-  named <code>x</code> from the <var>parameters</var> argument,
+  named "<code>x</code>" from <var>parameters</var>,
   else let it be <a><code>null</code></a>.
 
  <li><p>Let <var>y</var> be the result of <a>getting a property</a>
-  named <code>y</code> from the <var>parameters</var> argument,
+  named "<code>y</code>" from <var>parameters</var>,
   else let it be <a><code>null</code></a>.
 
  <li><p>If <var>width</var> or <var>height</var> is neither <a><code>null</code></a>
@@ -3937,7 +3961,8 @@ corresponding to the <a>current top-level browsing context</a>.
  This typically increases the window to the maximum available size
  without going full-screen.
 
-<p>The <a>remote end steps</a> are:
+<p>The <a>remote end steps</a>, given <var>session</var>, <var>URL
+variables</var> and <var>parameters</var> are:
 
 <ol>
  <li><p>If the <a>remote end</a> does not support
@@ -3982,7 +4007,8 @@ corresponding to the <a>current top-level browsing context</a>.
  on the window containing the <a>current top-level browsing context</a>.
  This typically hides the window in the system tray.
 
-<p>The <a>remote end steps</a> are:
+<p>The <a>remote end steps</a>, given <var>session</var>, <var>URL
+variables</var> and <var>parameters</var> are:
 
 <ol>
  <li><p>If the <a>remote end</a> does not support
@@ -4019,7 +4045,8 @@ corresponding to the <a>current top-level browsing context</a>.
  </tr>
 </table>
 
-<p>The <a>remote end steps</a> are:
+<p>The <a>remote end steps</a>, given <var>session</var>, <var>URL
+variables</var> and <var>parameters</var> are:
 
 <ol>
  <li><p>If the <a>remote end</a> does not <a>support fullscreen</a>
@@ -4727,18 +4754,19 @@ session.execute("arguments[0].remove()", [body]);
 </code></pre>
 </aside>
 
-<p>The <a>remote end steps</a> are:
+<p>The <a>remote end steps</a>, given <var>session</var>, <var>URL
+variables</var> and <var>parameters</var> are:
 
 <ol>
- <li><p>Let <var>location strategy</var> be the result
-  of <a>getting a property</a> called "<code>using</code>".
+ <li><p>Let <var>location strategy</var> be the result of <a>getting a
+  property</a> named "<code>using</code>" from <var>parameters</var>.
 
  <li><p>If <var>location strategy</var> is not present as a keyword in the
   <a>table of location strategies</a>, return <a>error</a> with
   <a>error code</a> <a>invalid argument</a>.
 
- <li><p>Let <var>selector</var> be the result
-  of <a>getting a property</a> called "<code>value</code>".
+ <li><p>Let <var>selector</var> be the result of <a>getting a
+  property</a> named "<code>value</code>" from <var>parameters</var>.
 
  <li><p>If <var>selector</var> is <a>undefined</a>,
   return <a>error</a> with <a>error code</a> <a>invalid argument</a>.
@@ -4779,18 +4807,19 @@ session.execute("arguments[0].remove()", [body]);
  </tr>
 </table>
 
-<p>The <a>remote end steps</a> are:
+<p>The <a>remote end steps</a>, given <var>session</var>, <var>URL
+variables</var> and <var>parameters</var> are:
 
 <ol>
- <li><p>Let <var>location strategy</var> be the result
-  of <a>getting a property</a> called "<code>using</code>".
+ <li><p>Let <var>location strategy</var> be the result of <a>getting a
+  property</a> named "<code>using</code>" from <var>parameters</var>.
 
  <li><p>If <var>location strategy</var> is not present as a keyword in the
   <a>table of location strategies</a>, return <a>error</a> with
   <a>error code</a> <a>invalid argument</a>.
 
- <li><p>Let <var>selector</var> be the result
-  of <a>getting a property</a> called "<code>value</code>".
+ <li><p>Let <var>selector</var> be the result of <a>getting a
+  property</a> named "<code>value</code>" from <var>parameters</var>.
 
  <li><p>If <var>selector</var> is <a>undefined</a>,
   return <a>error</a> with <a>error code</a> <a>invalid argument</a>.
@@ -4826,18 +4855,19 @@ session.execute("arguments[0].remove()", [body]);
  </tr>
 </table>
 
-<p>The <a>remote end steps</a> are:
+<p>The <a>remote end steps</a>, given <var>session</var>, <var>URL
+variables</var> and <var>parameters</var> are:
 
 <ol>
- <li><p>Let <var>location strategy</var> be the result
-  of <a>getting a property</a> called "<code>using</code>".
+ <li><p>Let <var>location strategy</var> be the result of <a>getting a
+  property</a> named "<code>using</code>" from <var>parameters</var>.
 
  <li><p>If <var>location strategy</var> is not present as a keyword in the
   <a>table of location strategies</a>, return <a>error</a> with
   <a>error code</a> <a>invalid argument</a>.
 
- <li><p>Let <var>selector</var> be the result
-  of <a>getting a property</a> called "<code>value</code>".
+ <li><p>Let <var>selector</var> be the result of <a>getting a
+  property</a> named "<code>value</code>" from <var>parameters</var>.
 
  <li><p>If <var>selector</var> is <a>undefined</a>,
   return <a>error</a> with <a>error code</a> <a>invalid argument</a>.
@@ -4848,9 +4878,11 @@ session.execute("arguments[0].remove()", [body]);
 
  <li><p><a>Handle any user prompts</a> and return its value if it is an <a>error</a>.
 
- <li><p>Let <var>start node</var> be the result
-  of <a>trying</a> to <a>get a known connected element</a>
-  with <a>url variable</a> <var>element id</var>.
+ <li>Let <var>element id</var> be <var>URL variables</var>' element id.
+
+ <li><p>Let <var>start node</var> be the result of <a>trying</a>
+  to <a>get a known connected element</a> with <var>URL variables</var>'
+  element id.
 
  <li>Let <var>result</var> be the value of <a>trying</a> to <a>Find</a> with
   <var>start node</var>, <var>location strategy</var>,
@@ -4876,18 +4908,19 @@ session.execute("arguments[0].remove()", [body]);
  </tr>
 </table>
 
-<p>The <a>remote end steps</a> are:
+<p>The <a>remote end steps</a>, given <var>session</var>, <var>URL
+variables</var> and <var>parameters</var> are:
 
 <ol>
- <li><p>Let <var>location strategy</var> be the result
-  of <a>getting a property</a> called "<code>using</code>".
+ <li><p>Let <var>location strategy</var> be the result of <a>getting a
+  property</a> named "<code>using</code>" from <var>parameters</var>.
 
  <li><p>If <var>location strategy</var> is not present as a keyword in the
   <a>table of location strategies</a>, return <a>error</a> with
   <a>error code</a> <a>invalid argument</a>.
 
- <li><p>Let <var>selector</var> be the result
-  of <a>getting a property</a> called "<code>value</code>".
+ <li><p>Let <var>selector</var> be the result of <a>getting a
+  property</a> named "<code>value</code>" from <var>parameters</var>.
 
  <li><p>If <var>selector</var> is <a>undefined</a>,
   return <a>error</a> with <a>error code</a> <a>invalid argument</a>.
@@ -4900,7 +4933,7 @@ session.execute("arguments[0].remove()", [body]);
 
  <li><p>Let <var>start node</var> be the result
   of <a>trying</a> to <a>get a known connected element</a>
-  with <a>url variable</a> <var>element id</var>.
+  with <var>URL variables</var>' element id.
 
  <li>Return the result of <a>trying</a> to <a>Find</a> with
   <var>start node</var>, <var>location strategy</var>, and <var>selector</var>.
@@ -5016,7 +5049,8 @@ session.execute("arguments[0].remove()", [body]);
  </tr>
 </table>
 
-<p>The <a>remote end steps</a> are:
+<p>The <a>remote end steps</a>, given <var>session</var>, <var>URL
+variables</var> and <var>parameters</var> are:
 
 <ol>
  <li><p>If the <a>current browsing context</a> is <a>no longer
@@ -5167,7 +5201,8 @@ This operation only makes sense on <a data-lt="input element"><code>input</code>
 of the <a>Checkbox</a>- and <a>Radio Button</a> states,
 or on <a><code>option</code> elements</a>.
 
-<p>The <a>remote end steps</a> are:
+<p>The <a>remote end steps</a>, given <var>session</var>, <var>URL
+variables</var> and <var>parameters</var> are:
 
 <ol>
  <li><p>If the <a>current browsing context</a> is <a>no longer open</a>,
@@ -5177,7 +5212,7 @@ or on <a><code>option</code> elements</a>.
 
  <li><p>Let <var>element</var> be the result
   of <a>trying</a> to <a>get a known connected element</a>
-  with <a>url variable</a> <var>element id</var>.
+  with <var>URL variables</var>' element id.
 
  <li><p>Let <var>selected</var> be the value
   corresponding to the first matching statement:
@@ -5214,8 +5249,8 @@ or on <a><code>option</code> elements</a>.
   </tr>
 </table>
 
-<p>
-The <a>remote end steps</a> are:
+<p>The <a>remote end steps</a>, given <var>session</var>, <var>URL
+variables</var> and <var>parameters</var> are:
 
 <ol>
  <li><p>If the <a>current browsing context</a> is <a>no longer open</a>,
@@ -5223,9 +5258,11 @@ The <a>remote end steps</a> are:
 
  <li><p><a>Handle any user prompts</a> and return its value if it is an <a>error</a>.
 
- <li><p>Let <var>element</var> be the result
-  of <a>trying</a> to <a>get a known element</a>
-  with <a>url variable</a> <var>element id</var>.
+ <li><p>Let <var>element</var> be the result of <a>trying</a>
+  to <a>get a known element</a> with <var>URL variables</var>' element
+  id.
+
+ <li><p>Let <var>name</var> be <var>URL variables</var>' name.
 
  <li>Let <var>result</var> be the result of the first matching condition:
 
@@ -5266,8 +5303,8 @@ The <a>remote end steps</a> are:
  </tr>
 </table>
 
-<p>
-The <a>remote end steps</a> are:
+<p>The <a>remote end steps</a>, given <var>session</var>, <var>URL
+variables</var> and <var>parameters</var> are:
 
 <ol>
  <li><p>If the <a>current browsing context</a> is <a>no longer open</a>,
@@ -5275,9 +5312,11 @@ The <a>remote end steps</a> are:
 
  <li><p><a>Handle any user prompts</a> and return its value if it is an <a>error</a>.
 
- <li><p>Let <var>element</var> be the result
-  of <a>trying</a> to <a>get a known element</a>
-  with <a>url variable</a> <var>element id</var>.
+ <li><p>Let <var>element</var> be the result of <a>trying</a>
+  to <a>get a known element</a> with <var>URL variables</var>' element
+  id.
+
+ <li><p>Let <var>name</var> <var>URL variables</var>' name.
 
  <li><p>Let <var>property</var> be the result of calling
   the <var>element</var>.<a>[[\GetProperty]]</a>(<var>name</var>).
@@ -5303,8 +5342,8 @@ The <a>remote end steps</a> are:
  </tr>
 </table>
 
-<p>
-The <a>remote end steps</a> are:
+<p>The <a>remote end steps</a>, given <var>session</var>, <var>URL
+variables</var> and <var>parameters</var> are:
 
 <ol>
  <li><p>If the <a>current browsing context</a> is <a>no longer open</a>,
@@ -5314,7 +5353,7 @@ The <a>remote end steps</a> are:
 
  <li><p>Let <var>element</var> be the result
   of <a>trying</a> to <a>get a known connected element</a>
-  with <a>url variable</a> <var>element id</var>.
+  with <var>URL variables</var>' <var>element id</var>.
 
  <li><p>Let <var>computed value</var> be the result of the first matching condition:
   <dl class="switch">
@@ -5322,7 +5361,7 @@ The <a>remote end steps</a> are:
    <a data-lt="document type">type</a> is not "<code>xml</code>"
    <dd><a>computed value</a> of parameter <var>property name</var>
     from <var>element</var>’s style declarations. <var>property name</var>
-    is obtained from <a>url variables</a>.
+    is obtained from <var>URL variables</var>.
 
    <dt>Otherwise
    <dd> "" (empty string)
@@ -5370,7 +5409,8 @@ When processing text,
 with the <a>Unicode character property</a> "<code>WSpace=Y</code>" or "<code>WS</code>".
 [[UAX44]]
 
-<p>The <a>remote end steps</a> are:
+<p>The <a>remote end steps</a>, given <var>session</var>, <var>URL
+variables</var> and <var>parameters</var> are:
 
 <ol>
  <li><p>If the <a>current browsing context</a> is <a>no longer open</a>,
@@ -5379,9 +5419,9 @@ with the <a>Unicode character property</a> "<code>WSpace=Y</code>" or "<code>WS<
  <li><p><a>Handle any user prompts</a> and return its value if it is
   an <a>error</a>.
 
- <li><p>Let <var>element</var> be the result
-  of <a>trying</a> to <a>get a known connected element</a>
-  with <a>url variable</a> <var>element id</var>.
+ <li><p>Let <var>element</var> be the result of <a>trying</a>
+  to <a>get a known connected element</a> with <var>URL variables</var>'
+  element id.
 
  <li><p>Let <var>rendered text</var> be the result of performing
   implementation-specific steps whose result is exactly the same as the
@@ -5406,7 +5446,8 @@ with the <a>Unicode character property</a> "<code>WSpace=Y</code>" or "<code>WS<
  </tr>
 </table>
 
-<p>The <a>remote end steps</a> are:
+<p>The <a>remote end steps</a>, given <var>session</var>, <var>URL
+variables</var> and <var>parameters</var> are:
 
 <ol>
  <li><p>If the <a>current browsing context</a> is <a>no longer open</a>,
@@ -5416,7 +5457,7 @@ with the <a>Unicode character property</a> "<code>WSpace=Y</code>" or "<code>WS<
 
  <li><p>Let <var>element</var> be the result
   of <a>trying</a> to <a>get a known element</a>
-  with <a>url variable</a> <var>element id</var>.
+  with <var>URL variables</var>' <var>element id</var>.
 
  <li><p>Let <var>qualified name</var> be the result of getting
   <var>element</var>’s <a>tagName</a> content <a>attribute</a>.
@@ -5470,7 +5511,8 @@ Width of the <a>web element</a>’s
 </dl>
 </aside>
 
-<p>The <a>remote end steps</a> are:
+<p>The <a>remote end steps</a>, given <var>session</var>, <var>URL
+variables</var> and <var>parameters</var> are:
 
 <ol>
  <li><p>If the <a>current browsing context</a> is <a>no longer open</a>,
@@ -5480,7 +5522,7 @@ Width of the <a>web element</a>’s
 
  <li><p>Let <var>element</var> be the result
   of <a>trying</a> to <a>get a known connected element</a>
-  with <a>url variable</a> <var>element id</var>.
+  with <var>URL variables</var>' element id.
 
  <li><p><a>Calculate the absolute position</a> of <var>element</var>
   and let it be <var>coordinates</var>.
@@ -5522,7 +5564,8 @@ Width of the <a>web element</a>’s
  </tr>
 </table>
 
-<p>The <a>remote end steps</a> are:
+<p>The <a>remote end steps</a>, given <var>session</var>, <var>URL
+variables</var> and <var>parameters</var> are:
 
 <ol>
  <li><p>If the <a>current browsing context</a> is <a>no longer open</a>,
@@ -5531,9 +5574,9 @@ Width of the <a>web element</a>’s
  <li><p><a>Handle any user prompts</a>
   and return its value if it is an <a>error</a>.
 
- <li><p>Let <var>element</var> be the result
-  of <a>trying</a> to <a>get a known connected element</a>
-  with <a>url variable</a> <var>element id</var>.
+ <li><p>Let <var>element</var> be the result of <a>trying</a>
+  to <a>get a known connected element</a> with <var>URL
+  variables</var>' element id.
 
  <li><p>Let <var>enabled</var> be a boolean initially set to true
   if the <a>current browsing context</a>’s
@@ -5563,7 +5606,8 @@ Width of the <a>web element</a>’s
     </tr>
   </table>
 
-  <p>The <a>remote end steps</a> are:
+  <p>The <a>remote end steps</a>, given <var>session</var>, <var>URL
+variables</var> and <var>parameters</var> are:
 
   <ol>
     <li><p>If the <a>current browsing context</a> is <a>no longer open</a>,
@@ -5574,7 +5618,7 @@ Width of the <a>web element</a>’s
 
     <li><p>Let <var>element</var> be the result
         of <a>trying</a> to <a>get a known connected element</a>
-        with <a>url variable</a> <var>element id</var>.
+        with <var>URL variables</var>' element id.
 
     <li><p>Let <var>role</var> be the result of computing the <a>WAI-ARIA role</a> of <var>element</var>.
 
@@ -5596,7 +5640,8 @@ Width of the <a>web element</a>’s
     </tr>
   </table>
 
-  <p>The <a>remote end steps</a> are:
+  <p>The <a>remote end steps</a>, given <var>session</var>, <var>URL
+variables</var> and <var>parameters</var> are:
 
     <ol>
       <li>
@@ -5608,7 +5653,7 @@ Width of the <a>web element</a>’s
 
       <li><p>Let <var>element</var> be the result
           of <a>trying</a> to <a>get a known connected element</a>
-          with <a>url variable</a> <var>element id</var>.
+          with <var>URL variables</var>' <var>element id</var>.
 
       <li><p>Let <var>label</var> be the result of a <a>Accessible Name and Description Computation</a> for the <a>Accessible Name</a> of the <var>element</var>.
 
@@ -5682,7 +5727,8 @@ If the element is outside the <a>viewport</a>,
 an <a>element not interactable</a> <a>error</a> is returned.
 </aside>
 
-<p>The <a>remote end steps</a> are:
+<p>The <a>remote end steps</a>, given <var>session</var>, <var>URL
+variables</var> and <var>parameters</var> are:
 
 <ol>
  <li><p>If the <a>current browsing context</a> is <a>no longer open</a>,
@@ -5889,7 +5935,8 @@ an <a>element not interactable</a> <a>error</a> is returned.
  <li><p>Invoke the <a>unfocusing steps</a> for the <var>element</var>.
 </ol>
 
-<p>The <a>remote end steps</a> for <a>Element Clear</a> are:
+<p>The <a>remote end steps</a>, given <var>session</var>, <var>URL
+variables</var> and <var>parameters</var> are:
 
 <ol>
  <li><p>If the <a>current browsing context</a> is <a>no longer open</a>,
@@ -6190,12 +6237,13 @@ Reset <var>current typeable text</var> to an empty string.
 If an <a>error</a> is returned, return that <a>error</a>
 </ol> <!-- /create actions from a string -->
 
-<p>The <a>remote end steps</a> for <a>Element Send Keys</a> are:
+<p>The <a>remote end steps</a>, given <var>session</var>, <var>URL
+variables</var> and <var>parameters</var> are:
 
 <ol>
  <li><p>Let <var>text</var> be the result
-  of <a>getting a property</a> called "<code>text</code>"
-  from the <var>parameters</var> argument.
+  of <a>getting a property</a> named "<code>text</code>"
+  from <var>parameters</var>.
 
  <li><p>If <var>text</var> is not a <a>String</a>,
   return an <a>error</a> with <a>error code</a> <a>invalid argument</a>.
@@ -6207,7 +6255,7 @@ If an <a>error</a> is returned, return that <a>error</a>
 
  <li><p>Let <var>element</var> be the result
   of <a>trying</a> to <a>get a known connected element</a>
-  with <a>url variable</a> <var>element id</var>.
+  with <var>URL variables</var>' element id.
 
  <li><p>Let <var>file</var> be true if <var>element</var> is
    <a><code>input</code> element</a> in the <a>file upload state</a>, or false
@@ -6346,7 +6394,8 @@ The <a>Get Page Source</a> <a>command</a>
 returns a string serialization of the DOM
 of the <a>current browsing context</a> <a>active document</a>.
 
-<p>The <a>remote end steps</a> are:
+<p>The <a>remote end steps</a>, given <var>session</var>, <var>URL
+variables</var> and <var>parameters</var> are:
 
 <ol>
  <li><p>If the <a>current browsing context</a> is <a>no longer open</a>,
@@ -6543,16 +6592,14 @@ a <a>remote end</a> must run the following steps:
  request</dfn> with argument <var>parameters</var> the implementation must:
 
 <ol>
- <li><p>Let <var>script</var> be the result of
-  <a>getting a property</a> named <code>script</code>
-  from the <var>parameters</var>.
+ <li><p>Let <var>script</var> be the result of <a>getting a
+  property</a> named "<code>script</code>" from <var>parameters</var>.
 
  <li><p>If <var>script</var> is not a <a>String</a>,
   return <a>error</a> with <a>error code</a> <a>invalid argument</a>.
 
- <li><p>Let <var>args</var> be the result of
-  <a>getting a property</a> named <code>args</code>
-  from the <var>parameters</var>.
+ <li><p>Let <var>args</var> be the result of <a>getting a property</a>
+  named "<code>args</code>" from <var>parameters</var>.
 
  <li><p>If <var>args</var> is not an <a>Array</a> return <a>error</a>
   with <a>error code</a> <a>invalid argument</a>.
@@ -6648,7 +6695,8 @@ a <a>remote end</a> must run the following steps:
  </tr>
 </table>
 
-<p>The <a>remote end steps</a> are:
+<p>The <a>remote end steps</a>, given <var>session</var>, <var>URL
+variables</var> and <var>parameters</var> are:
 
 <ol>
  <li><p>Let <var>body</var> and <var>arguments</var> be the result of
@@ -6711,7 +6759,8 @@ An additional value is provided as the final argument to the function.
 This is a function that may be invoked to signal the completion of the asynchronous operation.
 The first argument provided to the function will be serialized to JSON and returned by <a>Execute Async Script</a>.
 
-<p>The <a>remote end steps</a> are:
+<p>The <a>remote end steps</a>, given <var>session</var>, <var>URL
+variables</var> and <var>parameters</var> are:
 
 <ol>
   <li><p>Let <var>body</var> and <var>arguments</var> by the result of <a>trying</a> to
@@ -6957,7 +7006,8 @@ The first argument provided to the function will be serialized to JSON and retur
  </tr>
 </table>
 
-<p>The <a>remote end steps</a> are:
+<p>The <a>remote end steps</a>, given <var>session</var>, <var>URL
+variables</var> and <var>parameters</var> are:
 
 <ol>
  <li><p>If the <a>current browsing context</a> is <a>no longer open</a>,
@@ -6995,7 +7045,8 @@ The first argument provided to the function will be serialized to JSON and retur
  </tr>
 </table>
 
-<p>The <a>remote end steps</a> are:
+<p>The <a>remote end steps</a>, given <var>session</var>, <var>URL
+variables</var> and <var>parameters</var> are:
 
 <ol>
  <li><p>If the <a>current browsing context</a> is <a>no longer open</a>,
@@ -7003,11 +7054,11 @@ The first argument provided to the function will be serialized to JSON and retur
 
  <li><p><a>Handle any user prompts</a>, and return its value if it is an <a>error</a>.
 
- <li><p>If the <a>url variable</a> <var>name</var>
-  is equal to a <a>cookie</a>’s <a>cookie name</a>
-  amongst <a>all associated cookies</a>
-  of the <a>current browsing context</a>’s <a>active document</a>,
-  return <a>success</a> with the <a>serialized cookie</a> as data.
+ <li><p>If the <var>URL variables</var>' name is equal to
+  a <a>cookie</a>’s <a>cookie name</a> amongst <a>all associated
+  cookies</a> of <var>session</var>'s <a>current browsing
+  context</a>’s <a>active document</a>, return <a>success</a> with
+  the <a>serialized cookie</a> as data.
 
   <p>Otherwise, return <a>error</a>
    with <a>error code</a> <a>no such cookie</a>.
@@ -7028,11 +7079,12 @@ The first argument provided to the function will be serialized to JSON and retur
  </tr>
 </table>
 
-<p>The <a>remote end steps</a> are:
+<p>The <a>remote end steps</a>, given <var>session</var>, <var>URL
+variables</var> and <var>parameters</var> are:
 
 <ol>
  <li><p>Let <var>data</var> be the result of <a>getting a property</a>
-  named <code>cookie</code> from the <var>parameters</var> argument.
+  named "<code>cookie</code>" from <var>parameters</var>.
 
  <li><p>If <var>data</var> is not a JSON <a>Object</a>
   with all the required (non-optional) JSON keys
@@ -7111,7 +7163,8 @@ The first argument provided to the function will be serialized to JSON and retur
   </tr>
 </table>
 
-<p>The <a>remote end steps</a> are:
+<p>The <a>remote end steps</a>, given <var>session</var>, <var>URL
+variables</var> and <var>parameters</var> are:
 
 <ol>
  <li><p>If the <a>current browsing context</a> is <a>no longer open</a>,
@@ -7119,8 +7172,7 @@ The first argument provided to the function will be serialized to JSON and retur
 
  <li><p><a>Handle any user prompts</a>, and return its value if it is an <a>error</a>.
 
- <li><p><a>Delete cookies</a> using
-  the <a>url variable</a> <var>name</var> parameter
+ <li><p><a>Delete cookies</a> using the <var>URL variables</var>' name
   as the filter argument.
 
  <li><p>Return <a>success</a> with data <a><code>null</code></a>.
@@ -7141,7 +7193,8 @@ The first argument provided to the function will be serialized to JSON and retur
  </tr>
 </table>
 
-<p>The <a>remote end steps</a> are:
+<p>The <a>remote end steps</a>, given <var>session</var>, <var>URL
+variables</var> and <var>parameters</var> are:
 
 <ol>
  <li><p>If the <a>current browsing context</a> is <a>no longer open</a>,
@@ -7595,13 +7648,12 @@ from a machine utilisation perspective.
  following steps:
 
 <ol>
- <li><p>Let <var>actions</var> be the result
-  of <a>getting a property</a> from <var>parameters</var>
-  named <code>actions</code>.
+ <li><p>Let <var>actions</var> be the result of <a>getting a
+  property</a> named "<code>actions</code>" from <var>parameters</var>.
 
- <li><p>If <var>actions</var> is <a>undefined</a>
-  or is not an <a>Array</a>,
-  return <a>error</a> with <a>error code</a> <a>invalid argument</a>.
+ <li><p>If <var>actions</var> is <a>undefined</a> or is not
+  an <a>Array</a>, return <a>error</a> with <a>error
+  code</a> <a>invalid argument</a>.
 
  <!-- TODO: not sure if reusing the ES definition of List works here-->
  <li><p>Let <var>actions by tick</var> be an empty <a>List</a>.</li>
@@ -9503,7 +9555,8 @@ Return <a>success</a> with data <var>action</var>.
  </tr>
 </table>
 
-<p>The <a>remote end steps</a> are:
+<p>The <a>remote end steps</a>, given <var>session</var>, <var>URL
+variables</var> and <var>parameters</var> are:
 
 <ol>
  <li><p>Let <var>actions by tick</var> be the result of <a>trying</a>
@@ -9548,7 +9601,8 @@ This causes events to be <a>fired</a>
 as if the state was released by an explicit series of actions.
 It also clears all the internal state of the virtual devices.
 
-<p>The <a>remote end steps</a> are:
+<p>The <a>remote end steps</a>, given <var>session</var>, <var>URL
+variables</var> and <var>parameters</var> are:
 
 <ol>
  <li><p>If the <a>current browsing context</a> is <a>no longer open</a>,
@@ -9806,7 +9860,8 @@ A request to <a>dismiss</a> an <a>alert</a> <a>user prompt</a>,
 which may not necessarily have a dismiss button,
 has the same effect as <a>accepting</a> it.
 
-<p>The <a>remote end steps</a> are:
+<p>The <a>remote end steps</a>, given <var>session</var>, <var>URL
+variables</var> and <var>parameters</var> are:
 
 <ol>
  <li><p>If the <a>current top-level browsing context</a> is <a>no longer open</a>,
@@ -9835,7 +9890,8 @@ has the same effect as <a>accepting</a> it.
  </tr>
 </table>
 
-<p>The <a>remote end steps</a> are:
+<p>The <a>remote end steps</a>, given <var>session</var>, <var>URL
+variables</var> and <var>parameters</var> are:
 
 <ol>
  <li><p>If the <a>current top-level browsing context</a> is <a>no longer open</a>,
@@ -9864,7 +9920,8 @@ has the same effect as <a>accepting</a> it.
  </tr>
 </table>
 
-<p>The <a>remote end steps</a> are:
+<p>The <a>remote end steps</a>, given <var>session</var>, <var>URL
+variables</var> and <var>parameters</var> are:
 
 <ol>
  <li><p>If the <a>current top-level browsing context</a> is <a>no longer open</a>,
@@ -9900,7 +9957,8 @@ The <a>Send Alert Text</a> <a>command</a>
 sets the text field of a <a>window.<code>prompt</code></a>
 <a>user prompt</a> to the given value.
 
-<p>The <a>remote end steps</a> are:
+<p>The <a>remote end steps</a>, given <var>session</var>, <var>URL
+variables</var> and <var>parameters</var> are:
 
 <ol>
  <li><p>Let <var>text</var> be the result of
@@ -10046,7 +10104,8 @@ sets the text field of a <a>window.<code>prompt</code></a>
  </tr>
 </table>
 
-<p>The <a>remote end steps</a> are:
+<p>The <a>remote end steps</a>, given <var>session</var>, <var>URL
+variables</var> and <var>parameters</var> are:
 
 <ol>
  <li><p>If the <a>current top-level browsing context</a> is <a>no longer open</a>,
@@ -10093,7 +10152,8 @@ The <a>Take Element Screenshot</a> <a>command</a>
 takes a screenshot of the visible region encompassed
 by the <a>bounding rectangle</a> of an <a>element</a>.
 
-<p>The <a>remote end steps</a> are:
+<p>The <a>remote end steps</a>, given <var>session</var>, <var>URL
+variables</var> and <var>parameters</var> are:
 
 <ol>
  <li><p>If the <a>current browsing context</a> is <a>no longer open</a>,
@@ -10103,7 +10163,7 @@ by the <a>bounding rectangle</a> of an <a>element</a>.
 
  <li><p>Let <var>element</var> be the result of
   <a>trying</a> to <a>get a known connected element</a>
-  with <a>url variable</a> <var>element id</var>.
+  with <var>URL variables</var>' element id.
 
 <li>
   <p><a>Scroll into view</a> the <var>element</var>.
@@ -10243,7 +10303,8 @@ argument <var>input</var> an implementation must:
  </tr>
 </table>
 
-<p>The <a>remote end steps</a> are:
+<p>The <a>remote end steps</a>, given <var>session</var>, <var>URL
+variables</var> and <var>parameters</var> are:
 
 <ol>
  <li><p>If the <a>current top-level browsing context</a> is <a>no longer open</a>,
@@ -10252,9 +10313,8 @@ argument <var>input</var> an implementation must:
  <li><p><a>Handle any user prompts</a> and return its value if it is an <a>error</a>.
 
  <li><p>Let <var>orientation</var> be the result of <a>getting a
-  property with default</a> named <code>orientation</code> and with
-  default "<code>portrait</code>" from the <var>parameters</var>
-  argument.
+  property with default</a> named "<code>orientation</code>" and with
+  default "<code>portrait</code>" from <var>parameters</var>.
 
  <li><p>If <var>orientation</var> is not a <a>String</a> or does not
  have one of the values "<code>landscape</code>" or
@@ -10262,30 +10322,30 @@ argument <var>input</var> an implementation must:
  code</a> <a>invalid argument</a>.
 
  <li><p>Let <var>scale</var> be the result of <a>getting a
-  property with default</a> named <code>scale</code> and with
-  default <code>1</code> from the <var>parameters</var> argument.
+  property with default</a> named "<code>scale</code>" and with
+  default <code>1</code> from <var>parameters</var>.
 
  <li><p>If <var>scale</var> is not a <a>Number</a>, or is less
  than <code>0.1</code> or greater than <code>2</code>
  return <a>error</a> with <a>error code</a> <a>invalid argument</a>.
 
  <li><p>Let <var>background</var> be the result of <a>getting a
-  property with default</a> named <code>background</code> and with
-  default <code>false</code> from the <var>parameters</var> argument.
+  property with default</a> named "<code>background</code>" and with
+  default <code>false</code> from <var>parameters</var>.
 
  <li><p>If <var>background</var> is not a <a>Boolean</a>
  return <a>error</a> with <a>error code</a> <a>invalid argument</a>.
 
  <li><p>Let <var>page</var> be the result of <a>getting a property
-  with default</a> named <code>page</code> and with a default of an
-  empty <a>Object</a> from the <var>parameters</var> argument.
+  with default</a> named "<code>page</code>" and with a default of an
+  empty <a>Object</a> from <var>parameters</var>.
 
  <li><p>Let <var>pageWidth</var> be the result of <a>getting a
-  property with default</a> named <code>width</code> and with a
+  property with default</a> named "<code>width</code>" and with a
   default of <code>21.59</code> from <var>page</var>.
 
  <li><p>Let <var>pageHeight</var> be the result of <a>getting a
-  property with default</a> named <code>height</code> and with a
+  property with default</a> named "<code>height</code>" and with a
   default of <code>27.94</code> from <var>page</var>.
 
  <li><p>If either of <var>pageWidth</var> or <var>pageHeight</var> is
@@ -10293,23 +10353,23 @@ argument <var>input</var> an implementation must:
  with <a>error code</a> <a>invalid argument</a>.
 
  <li><p>Let <var>margin</var> be the result of <a>getting a property
-  with default</a> named <code>margin</code> and with a default of an
-  empty <a>Object</a> from the <var>parameters</var> argument.
+  with default</a> named "<code>margin</code>" and with a default of an
+  empty <a>Object</a> from <var>parameters</var>.
 
  <li><p>Let <var>marginTop</var> be the result of <a>getting a
-  property with default</a> named <code>top</code> and with a
+  property with default</a> named "<code>top</code>" and with a
   default of <code>1</code> from <var>margin</var>.
 
  <li><p>Let <var>marginBottom</var> be the result of <a>getting a
-  property with default</a> named <code>bottom</code> and with a
+  property with default</a> named "<code>bottom</code>" and with a
   default of <code>1</code> from <var>margin</var>.
 
  <li><p>Let <var>marginLeft</var> be the result of <a>getting a
-  property with default</a> named <code>left</code> and with a
+  property with default</a> named "<code>left</code>" and with a
   default of <code>1</code> from <var>margin</var>.
 
  <li><p>Let <var>marginRight</var> be the result of <a>getting a
-  property with default</a> named <code>right</code> and with a
+  property with default</a> named "<code>right</code>" and with a
   default of <code>1</code> from <var>margin</var>.
 
  <li><p>If any
@@ -10318,15 +10378,15 @@ argument <var>input</var> an implementation must:
  return <a>error</a> with <a>error code</a> <a>invalid argument</a>.
 
  <li><p>Let <var>shrinkToFit</var> be the result of <a>getting a
-  property with default</a> named <code>shrinkToFit</code> and with
-  default <code>true</code> from the <var>parameters</var> argument.
+  property with default</a> named "<code>shrinkToFit</code>" and with
+  default <code>true</code> from <var>parameters</var>.
 
  <li><p>If <var>shrinkToFit</var> is not a <a>Boolean</a>
  return <a>error</a> with <a>error code</a> <a>invalid argument</a>.
 
  <li><p>Let <var>pageRanges</var> be the result of <a>getting a
-  property with default</a> named <code>pageRanges</code> from
-  the <var>parameters</var> argument with default of an
+  property with default</a> named "<code>pageRanges</code>" from
+  <var>parameters</var> with default of an
   empty <a>Array</a>.
 
  <li><p>If <var>pageRanges</var> is not an <a>Array</a>
