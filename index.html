@@ -360,15 +360,15 @@ fail. In all other cases it must be true.
 </ol>
 
 <p>The result of <dfn data-lt="getting properties|getting the
- property">getting a property</dfn> with argument <var>name</var> is
- defined as being the same as the result of calling
- <a>Object</a>.<a>[[\GetOwnProperty]]</a>(<var>name</var>).
+ property">getting a property</dfn> named <var>name</var>
+ from <var>object</var> is defined as being the same as the result of
+ calling <var>object</var>.<a>[[\GetOwnProperty]]</a>(<var>name</var>).
 
 <p>The result of <dfn data-lt="getting the property with
- default">getting a property with default</dfn> with
- arguments <var>name</var> and <var>default</var> is defined as being
- the same as the result of calling
- <a>Object</a>.<a>[[\GetOwnProperty]]</a>(<var>name</var>) if that
+ default">getting a property with default</dfn> named <var>name</var>
+ with <var>default</var> from <varobject</var>is defined as being the
+ same as the result of calling
+ <var>object</var>.<a>[[\GetOwnProperty]]</a>(<var>name</var>) if that
  results in a value other than <code>undefined</code>
  and <var>default</var> otherwise.
 
