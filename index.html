@@ -3886,15 +3886,15 @@ variables</var> and <var>parameters</var> are:
 <p class=note>
 The <a>Set Window Rect</a> <a>command</a>
 alters the size and the position of the operating system window
-corresponding to the <a>current top-level browsing context</a>.
+corresponding to <var>session</a>'s <a>current top-level browsing context</a>.
 
 <p>The <a>remote end steps</a>, given <var>session</var>, <var>URL
 variables</var> and <var>parameters</var> are:
 
 <ol>
  <li><p>Let <var>width</var> be the result of
-  <a>getting a property</a> named <code>width</code>
-  from the <var>parameters</var> argument, else let it be <a><code>null</code></a>.
+  <a>getting a property</a> named "<code>width</code>"
+  from <var>parameters</var>, else let it be <a><code>null</code></a>.
 
  <li><p>Let <var>height</var> be the result of
   <a>getting a property</a> named "<code>height</code>"
@@ -4228,9 +4228,8 @@ is given by:
   return <a>error</a> with <a>error code</a> <a>invalid argument</a>.
 
  <li><p>Let <var>reference</var> be the result of
-  <a data-lt="getting a property">getting</a>
-  the <a>web element identifier</a> property
-  from <var>object</var>.
+  <a data-lt="getting a property">getting</a> the <a>web element
+  identifier</a> property from <var>object</var>.
 
  <li><p>Let <var>element</var> be the result
   of <a>trying</a> to <a>get a known element</a>
@@ -7613,25 +7612,25 @@ and a <code>y</code> property which is an unsigned integer.
    continue to the first step of this loop.
 
   <li><p>Let <var>key state pressed</var> be the result of <a>getting
-   a property</a> named <code>pressed</code> from <var>source</var>.
+   a property</a> named "<code>pressed</code>" from <var>source</var>.
 
   <li><p>Add all strings from <var>key state pressed</var>
    to <var>pressed</var>.
 
   <li>Let <var>alt</var> be a logical OR of <var>alt</var> and the
-   result of <a>getting a property</a> named <code>alt</code>
+   result of <a>getting a property</a> named "<code>alt</code>"
    from <var>source</var>.
 
   <li>Let <var>ctrl</var> be a logical OR of <var>ctrl</var> and the
-   result of <a>getting a property</a> named <code>ctrl</code>
+   result of <a>getting a property</a> named "<code>ctrl</code>"
    from <var>source</var>.
 
   <li>Let <var>meta</var> be a logical OR of <var>meta</var> and the
-   result of <a>getting a property</a> named <code>meta</code>
+   result of <a>getting a property</a> named "<code>meta</code>"
    from <var>source</var>.
 
   <li>Let <var>shift</var> be a logical OR of <var>shift</var> and the
-   result of <a>getting a property</a> named <code>shift</code>
+   result of <a>getting a property</a> named "<code>shift</code>"
    from <var>source</var>.
  </ol>
 
@@ -7781,7 +7780,7 @@ from a machine utilisation perspective.
 
 <ol>
  <li><p>Let <var>type</var> be the result of <a>getting a property</a>
-  named <code>type</code> from <var>action sequence</var>.
+  named "<code>type</code>" from <var>action sequence</var>.
 
  <li><p>If <var>type</var> is
   not "<code>key</code>", "<code>pointer</code>",
@@ -7852,7 +7851,7 @@ from a machine utilisation perspective.
   return an <a>error</a> with <a>error code</a> <a>invalid argument</a>.
 
  <li><p>Let <var>action items</var> be the result of <a>getting a
-  property</a> named <code>actions</code> from
+  property</a> named "<code>actions</code>" from
   <var>action sequence</var>.
 
  <li><p>If <var>action items</var> is not an <a>Array</a>,
@@ -7914,7 +7913,7 @@ return <a>error</a> with <a>error code</a> <a>invalid argument</a>.
 
 <li><p>
 Let <var>pointer type</var> be the result
-of <a>getting a property</a> named <code>pointerType</code>
+of <a>getting a property</a> named "<code>pointerType</code>"
 from <var>parameters data</var>.
 
 <li><p>
@@ -7951,7 +7950,7 @@ a <a>remote end</a> must perform the following steps:</p>
 <ol>
 <li><p>
 Let <var>subtype</var> be the result of <a>getting a property</a>
-named <code>type</code> from <var>action item</var>.
+named "<code>type</code>" from <var>action item</var>.
 
 <li><p>
 If <var>subtype</var> is not "<code>pause</code>",
@@ -7980,7 +7979,7 @@ a <a>remote end</a> must perform the following steps:</p>
 <ol>
 <li><p>
 Let <var>subtype</var> be the result of <a>getting a property</a>
-named <code>type</code> from <var>action item</var>.
+named "<code>type</code>" from <var>action item</var>.
 
 <li><p>
 If <var>subtype</var> is not one of the values
@@ -8002,10 +8001,8 @@ of <a>trying</a> to <a>process a pause action</a> with arguments
 <var>action item</var> and <var>action</var>,
 and return <var>result</var>.
 
-<li><p>
-Let <var>key</var> be the result
-of <a>getting a property</a> named <code>value</code>
-from <var>action item</var>.
+<li><p> Let <var>key</var> be the result of <a>getting a property</a>
+named "<code>value</code>" from <var>action item</var>.
 
 <li><p>
 If <var>key</var> is not a <a>String</a> containing a single <a>unicode code point</a>
@@ -8029,7 +8026,7 @@ a <a>remote end</a> must perform the following steps:</p>
 <ol>
 <li><p>
 Let <var>subtype</var> be the result
-of <a>getting a property</a> named <code>type</code>
+of <a>getting a property</a> named "<code>type</code>"
 from <var>action item</var>.
 
 <li><p>
@@ -8088,7 +8085,7 @@ a <a>remote end</a> must perform the following steps:</p>
 <ol>
 <li><p>
 Let <var>subtype</var> be the result
-of <a>getting a property</a> named <code>type</code>
+of <a>getting a property</a> named "<code>type</code>"
 from <var>action item</var>.
 
 <li><p>
@@ -8112,7 +8109,7 @@ and return <var>result</var>.
 
 <li><p>
 Let <var>duration</var> be the result of <a>getting a property</a>
-named <code>duration</code> from <var>action item</var>.
+named "<code>duration</code>" from <var>action item</var>.
 
 <li><p>
 If <var>duration</var> is not <a>undefined</a> and <var>duration</var>
