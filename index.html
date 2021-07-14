@@ -304,19 +304,17 @@ It is acknowledged that this is complementary to the Evil Bit [[RFC3514]].
   of the wire protocol.
 
 <p>
-The <dfn>readiness state</dfn> of a <a>remote end</a>
-indicates whether it is free to accept new connections.
-It must be false if the maximum <a>active sessions</a>
-is equal to the length of the list of <a>active sessions</a>,
-or if the node is an <a>intermediary node</a>
-and is known to be in a state in which attempting to create <a>new sessions</a> would fail.
-In all other cases it must be true.
+The <dfn>readiness state</dfn> of a <a>remote end</a> indicates
+whether it is free to accept new connections.  It must be false if the
+implementation is an <a>endpoint node</a> and the list of <a>active
+HTTP sessions</a> is not empty, or otherwise if the <a>remote end</a> is known to
+be in a state in which attempting to create <a>new sessions</a> would
+fail. In all other cases it must be true.
 
-<p class=example>If the <a>intermediary node</a>
- is a multiplexer that manages
- multiple <a data-lt="endpoint node">endpoint nodes</a>,
- this might indicate its ability to purvey more <a>sessions</a>,
- for example if it has hit its maximum capacity.
+<p class=example>If the <a>intermediary node</a> is a multiplexer that
+ manages multiple <a data-lt="endpoint node">endpoint nodes</a>, this
+ might indicate its ability to purvey more <a>sessions</a>, for
+ example if it has hit its maximum capacity.
 </section> <!-- /Nodes -->
 
 <section>
@@ -2143,29 +2141,10 @@ with a "<code>moz:</code>" prefix:
 <section>
 <h2>Sessions</h2>
 
-<p>A <a>session</a> is equivalent to a single instantiation of a particular user agent,
- including all its child browsers.
- WebDriver gives each <a>session</a> a unique <a>session ID</a>
- that can be used to differentiate one session from another,
- allowing multiple user agents to be controlled from a single HTTP server,
- and allowing sessions to be routed via a multiplexer
- (known as an <a>intermediary node</a>).
-
-<p>A WebDriver <dfn data-lt="sessions">session</dfn> represents
- the <a>connection</a> between a <a>local end</a> and a specific <a>remote end</a>.
-
-<p>A <a>session</a> is started when
- a <a>New Session</a> is invoked.
- It is an <a>error</a> to send any commands before starting a session,
- or to continue to send commands after
- the <a>session</a> has been closed.
- Maintaining session continuity between <a>commands</a> to
- the <a>remote end</a> requires passing a <a>session ID</a>.
-
-<p>A <a>session</a> is torn down at some later point;
- either explicitly by invoking <a>Delete Session</a>,
- or implicitly when <a>Close Window</a> is called
- at the last remaining <a>top-level browsing context</a>.
+<p>A WebDriver <dfn data-lt="sessions">session</dfn> represents the
+ logical connection between a <a>local end</a> and a
+ specific <a>remote end</a>. The <a>session</a> object holds state
+ specific to that connection.
 
 <p>An <a>intermediary node</a> will maintain an <dfn>associated
  session</dfn> for each active <a>session</a>. This is
@@ -2175,28 +2154,33 @@ with a "<code>moz:</code>" prefix:
  an <a>intermediary node</a> will also <a>close the session</a> of
  the <a>associated session</a>.
 
-<p>All <a>commands</a>, except <a>New Session</a> and <a>Status</a>,
- have an associated <dfn>current session</dfn>,
- which is the <a>session</a> in which that <a>command</a> will run.
+<p>A <a>session</a> has a <dfn>session ID</dfn>, which is the string
+ representation of a <a>UUID</a> used to uniquely identify the
+ session. This is set when creating the session.
+
+<p>A <a>session</a> has a <dfn>HTTP flag</dfn> which is set when the
+session is created. A session with this flag set is a <dfn>HTTP
+session</dfn>.
+
+<p>A <a>session</a> has an associated list of <a>active input sources</a>.
+
+<p>A <a>session</a> has an associated <a>input state table</a>.
+
+<p>A <a>session</a> has an associated <a>input cancel list</a>.
 
 <p>A <a>remote end</a> has an associated list of
- <dfn data-lt="active session">active sessions</dfn>,
- which is a list of all <a>sessions</a> that are currently started.
- A <a>remote end</a> that is not an <a>intermediary node</a>
- has at most one <a>active session</a> at a given time.
+ <dfn>active sessions</dfn>, which is a list of all <a>session</a>s
+ that are currently started.
 
-<p>A <a>remote end</a> has an associated
- <dfn>maximum active sessions</dfn> (an integer)
- that defines the number of <a>active sessions</a>
- that are supported.
- This may be “unlimited” for <a>intermediary nodes</a>,
- but must be exactly one for a <a>remote end</a> that is an <a>endpoint node</a>.
+<p>A <a>remote end</a> has an associated list of
+ <dfn>active HTTP sessions</dfn>, which is a list of all <a>HTTP
+ session</a>s that are currently started.
 
-<p>A <a>session</a> has an associated <dfn>session ID</dfn> (a string
- representation of a <a>UUID</a>) used to uniquely identify this
- session.  Unless stated otherwise it is <a><code>null</code></a>.
+<p class=note>The limitation of a single HTTP session for <a>endpoint
+node</a>s means that the first entry in the list of <a>active HTTP
+sessions</a> will be the only entry.
 
-<p>A <a>session</a> has an associated <dfn>current browsing
+<p>A <a>HTTP session</a> has an associated <dfn>current browsing
  context</dfn>, which is the <a>browsing context</a> against
  which <a>commands</a> will run, an associated <dfn>current parent
  browsing context</dfn>, which is set to the parent of the <a>current
@@ -2205,47 +2189,56 @@ with a "<code>moz:</code>" prefix:
  set to the top-browsing context ancestor of the <a>current browsing
  context</a>, when changing browsing contexts.</p>
 
-<p>
-A <a>session</a> has an associated <dfn data-lt="session script timeout|session page load timeout|session implicit wait timeout">session timeouts</dfn>
-that records the timeout duration values used to control the behavior
+<p>An <a>HTTP session</a> has an associated <dfn data-lt="session
+script timeout|session page load timeout|session implicit wait
+timeout">session timeouts</dfn> that records the timeout duration
+values used to control the behavior
 of <a href=#executing-script>script evaluation</a>,
 <a href=#navigation>navigation</a>,
 and <a href=#elements>element retrieval</a>.
 
-<p>A <a>session</a> has an associated <dfn>page loading strategy</dfn>,
- which is one of the keywords from the <a>table of page load strategies</a>.
- Unless stated otherwise, it is <a>normal</a>.
+<p>An <a>HTTP session</a> has an associated <dfn>page loading
+ strategy</dfn>, which is one of the keywords from the <a>table of
+ page load strategies</a>.  Unless stated otherwise, it
+ is <a>normal</a>.
 
-<p>A <a>session</a> has an associated <dfn>secure TLS</dfn> state
- that indicates whether untrusted or self-signed TLS certificates
- should be trusted for the duration of the WebDriver session.
- If it is unset, this indicates that certificate- or TLS errors
- that occur upon <a>navigation</a> should be suppressed.
- The state can be unset by providing
- an "<code>acceptInsecureCerts</code>" <a>capability</a> with the value true.
- Unless stated otherwise, it is set.
+<p>An <a>HTTP session</a> has an associated <a>strict file
+ interactability</a> state which is a boolean.
 
-<p>A <a>session</a> has an associated <a>strict file interactability</a>
- state which is a boolean.
-
-<p>
-A <a>session</a> has an associated <a>user prompt handler</a>.
+<p>A <a>HTTP session</a> has an associated <a>user prompt handler</a>.
 Unless stated otherwise it is in the <a>dismiss and notify state</a>.
 
-<p>A <a>session</a> has an associated list of <a>active input sources</a>.
-
-<p>A <a>session</a> has an associated <a>input state table</a>.
-
-<p>A <a>session</a> has an associated <a>input cancel list</a>.
-
-<p>A <a>session</a> has an associated <dfn>request queue</dfn> which is a
- [=queue=] of [=requests=] that are currently awaiting
+<p>An <a>HTTP session</a> has an associated <dfn>request queue</dfn> which is a
+ <a>queue</a> of <a data-lt=request>requests</a> that are currently awaiting
  processing.
+
+<h3>Global State</h3>
+
+<p>In addition to per-session state, a <a>remote end</a> that is
+an <a>endpoint node</a> also has additional state that is global
+across all sessions.</p>
+
+<p>An <a>endpoint node</a> has an associated <dfn>accept insecure
+ TLS</dfn> flag that indicates whether untrusted or self-signed TLS
+ certificates are treated as trusted. The default value of the flag is
+ false if the endpoint doesn't support accepting insecure TLS
+ connections, or unset otherwise.</p>
+
+<p>An <a>endpoint node</a> has an associated <dfn>has proxy
+ configuration</dfn> flag that indicates whether the proxy is already
+ configured. The default value of the flag is true if the endpoint
+ doesn't support proxy configuration, or false otherwise.</p>
 
 <p>When asked to <dfn>close the session</dfn>,
  a <a>remote end</a> must take the following steps:
 
 <ol>
+
+ <li><p>If <var>session</var>'s <a>HTTP flag</a> is set,
+ remove <var>session</var> from <a>active HTTP sessions</a>.
+
+ <li><p>Remove <var>session</var> from <a>active sessions</a>.
+
  <li><p>Perform the following substeps based on the <a>remote end</a>’s
   type:
   <dl class=switch>
@@ -2266,8 +2259,6 @@ Unless stated otherwise it is in the <a>dismiss and notify state</a>.
      algorithm before returning the <a>error</a>.
    </ol>
   </dl>
-
- <li><p>Remove the <a>current session</a> from <a>active sessions</a>.
 
  <li><p>Perform any implementation-specific cleanup steps.
 
@@ -2358,9 +2349,11 @@ If the creation fails, a <a>session not created</a> <a>error</a> is returned.
 variables</var> and <var>parameters</var> are:
 
 <ol>
-  <li><p>If the <a>maximum active sessions</a> is equal to
-  the length of the list of <a>active sessions</a>,
-  return <a>error</a> with <a>error code</a> <a>session not created</a>.
+  <li><p>If the implementation is an <a>endpoint node</a>, and the
+  list of <a>active HTTP sessions</a> is not empty, or otherwise if
+  the implementation is unable to start an additional session,
+  return <a>error</a> with <a>error code</a> <a>session not
+  created</a>.
 
  <li><p>If the <a>remote end</a> is an <a>intermediary node</a>, take
   implementation-defined steps that either result in returning
@@ -2504,8 +2497,8 @@ variables</var> and <var>parameters</var> are:
 variables</var> and <var>parameters</var> are:
 
 <ol>
- <li><p>If the <a>current session</a> is an <a>active session</a>,
-  <a>try</a> to <a>close the session</a>.
+ <li><p>If <var>session</var> is an <a>active HTTP session</a>,
+  <a>try</a> to <a>close the session</a> with <var>session</var>.
 
  <li><p>Return <a>success</a> with data <a><code>null</code></a>.
 </ol>
@@ -2924,10 +2917,10 @@ Return <a>success</a> with data <a><code>null</code></a>.
 <p class=note>The command causes the user agent
  to <a>navigate</a> the <a>current top-level browsing context</a> to a new location.
 
-<p>If the <a>session</a> is not in a <a>secure TLS</a> state,
- no certificate errors that would normally
- cause the user agent to abort and show a security warning
- are to hinder navigation to the requested address.
+<p>If the <a>remote end</a>'s <a>accept insecure TLS</a> flag is true, no
+ certificate errors that would normally cause the user agent to abort
+ and show a security warning are to hinder navigation to the requested
+ address.
 
 <aside class=example>
  <p>To navigate the <a>current top-level browsing context</a>
