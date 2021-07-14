@@ -272,9 +272,10 @@ It is acknowledged that this is complementary to the Evil Bit [[RFC3514]].
   above the level of the wire protocol.
 
  <dt><dfn data-lt="remote ends|remote">Remote end</dfn>
- <dd>The remote end hosts the server side of the <a href=#protocol>protocol</a>.
-  Defining the behavior of a remote end in response to the WebDriver protocol
-  forms the largest part of this specification.
+ <dd>The remote end hosts the server side of
+  the <a href=#protocol>protocol</a>.  Defining the behavior of
+  a <a>remote end</a> in response to the WebDriver protocol forms the
+  largest part of this specification.
 </dl>
 
 <p>For <a>remote ends</a> the standard defines two broad conformance
@@ -1846,7 +1847,7 @@ with a "<code>moz:</code>" prefix:
      <dd><p>If <var>value</var> is not a <a>boolean</a> return
       an <a>error</a> with <a>error code</a> <a>invalid
       argument</a>. Otherwise, let <var>deserialized</var> be
-      set to <var>value</var>
+      set to <var>value</var>.
 
      <dt><var>name</var> equals "<code>browserName</code>"
      <dt><var>name</var> equals "<code>browserVersion</code>"
@@ -10171,14 +10172,14 @@ variables</var> and <var>parameters</var> are:
   <a>a serialization of the <code>canvas</code> element’s bitmap as a file</a>,
   using "<code>image/png</code>" as an argument.
 
- <li><p>Let <var>data url</var> be a <a><code>data:</code> URL</a>
+ <li><p>Let <var>data URL</var> be a <a><code>data:</code> URL</a>
   representing <var>file</var>. [[RFC2397]]
 
  <li><p>Let <var>index</var> be the <a>index of</a> "<code>,</code>"
-  in <var>data url</var>.
+  in <var>data URL</var>.
 
  <li><p>Let <var>encoded string</var> be a <a>substring</a>
-  of <var>data url</var> using (<var>index</var> + 1) as the <i>start</i> argument.
+  of <var>data URL</var> using (<var>index</var> + 1) as the <i>start</i> argument.
 
  <li><p>Return <a>success</a> with data <var>encoded string</var>.
 </ol>
