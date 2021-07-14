@@ -2346,8 +2346,13 @@ Object <var>capabilites</var>, and a set <var>flags</var>:
      <li><p>If the list of <a>active sessions</a> is empty, set
      the <a>webdriver-active flag</a> to false.
 
-     <li><p>An <a>endpoint node</a> must <a>close</a> any <a>top-level
-      browsing contexts</a> associated with the <a>session</a>,
+     <li><p>Unset the <a>accept insecure TLS</p> flag.
+
+     <li><p>Reset the <a>has proxy configuration</p> flag to its
+     default value.
+
+     <li><p>If <a>active sessions</a> is empty,
+      pptionally, <a>close</a> all <a>top-level browsing contexts</a>,
       without <a>prompting to unload</a>.
     </ol>
   <dt><a>Remote end</a> is an <a>intermediary node</a>
