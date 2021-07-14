@@ -1464,7 +1464,7 @@ specification.
 <section>
 <h2>Capabilities</h2>
 
-<p>WebDriver <dfn data-lt="capability">capabilities</dfn>
+<p>WebDriver <dfn>capabilities</dfn>
  are used to communicate the features supported by a given implementation.
  The <a>local end</a> may use capabilities
  to define which features it requires the <a>remote end</a>
@@ -1739,9 +1739,10 @@ with a "<code>moz:</code>" prefix:
 <section>
 <h3>Processing capabilities</h3>
 
-<p>To <dfn data-lt="capabilities processing">process capabilities</dfn>
- with argument <var>parameters</var>,
- the <a>endpoint node</a> must take the following steps:
+<p>To <dfn data-lt="capabilities processing">process
+ capabilities</dfn> with argument <var>parameters</var>,
+ and <var>flags</var>, the <a>endpoint node</a> must take the
+ following steps:
 
 <ol>
  <li><p>Let <var>capabilities request</var> be the result of <a>getting the property</a>
@@ -1784,8 +1785,8 @@ with a "<code>moz:</code>" prefix:
   to an indexed property in <var>all first match capabilities</var>:
   <ol>
    <li><p>Let <var>validated capabilities</var> be the result
-    of <a>trying</a> to <a>validate capabilities</a> with argument
-    <var>first match capabilities</var>.
+    of <a>trying</a> to <a>validate capabilities</a> with arguments
+    <var>first match capabilities</var> and <var>flags</var>.
 
    <li><p>Append <var>validated capabilities</var> to
     <var>validated first match capabilities</var>.
@@ -1962,8 +1963,9 @@ with a "<code>moz:</code>" prefix:
   to be impossible to match against until the browser process is started.
 </aside>
 
-<p>When <dfn>matching capabilities</dfn>
- with JSON <a>Object</a> argument <var>capabilities</var>,
+<p>
+ When <dfn>matching capabilities</dfn> given
+ JSON <a>Object</a> <var>capabilities</var>, and a set <var>flags</var>,
  an <a>endpoint node</a> must take the following steps:
 
 <ol>
@@ -1985,13 +1987,19 @@ with a "<code>moz:</code>" prefix:
     indicating the session will not implicitly trust untrusted
     or self-signed TLS certificates on <a>navigation</a>.
 
-   <dt>"<code>strictFileInteractability</code>"
-    <dd><a>Boolean</a> initially set to false,
-    indicating that interactabilty checks will be applied to
-    &lt;input type=file&gt;.
-
    <dt>"<code>setWindowRect</code>"
-   <dd>Boolean indicating whether the <a>remote end</a> supports all of the <a href=#resizing-and-positioning-windows>resizing and positioning</a> <a>commands</a>.
+   <dd>Boolean indicating whether the <a>remote end</a> supports all
+   of the <a href=#resizing-and-positioning-windows>resizing and
+   positioning</a> <a>commands</a>.
+  </dl>
+
+ <li><p>If <var>flags</var> contains "<code>http</code>", add the
+ following entries to <var>matched capabilities</var>:
+  <dl>
+     <dt>"<code>strictFileInteractability</code>"
+     <dd><a>Boolean</a> initially set to false,
+     indicating that interactabilty checks will be applied to
+     &lt;input type=file&gt;.
   </dl>
 
  <li><p>Optionally add <a>extension capabilities</a> as entries
@@ -2085,9 +2093,9 @@ with a "<code>moz:</code>" prefix:
       </div>
 
      <dt>"<code>acceptInsecureCerts</code>"
-      <dd><p>If <var>value</var> is <code>true</code>
-       and the <a>endpoint node</a> does not support <a>insecure TLS certificates</a>,
-       return <a>success</a> with data <a><code>null</code></a>.
+      <dd><p>If <a>accept insecure TLS</a> flag is set and not equal
+       to <var>value</var>, return <a>success</a> with
+       data <a><code>null</code></a>.
 
        <p class=note>If the <a>endpoint node</a> does not
         support <a>insecure TLS certificates</a> and this is the reason
@@ -2095,11 +2103,11 @@ with a "<code>moz:</code>" prefix:
         information to the <a>local end</a>.
 
      <dt>"<code>proxy</code>"
-     <dd><p>If the <a>endpoint node</a> does not allow the proxy it
-      uses to be configured, or if the proxy configuration defined
-      in <var>value</var> is not one that passes the <a>endpoint
-      node</a>’s implementation-specific validity checks,
-      return <a>success</a> with data <a><code>null</code></a>.
+     <dd><p>If the <a>has proxy configuration</a> flag is set, or if
+      the proxy configuration defined in <var>value</var> is not one
+      that passes the <a>endpoint node</a>’s implementation-specific
+      validity checks, return <a>success</a> with
+      data <a><code>null</code></a>.
 
       <p class=note>A <a>local end</a> would only send this capability
        if it expected it to be honored and the configured proxy
@@ -2116,7 +2124,7 @@ with a "<code>moz:</code>" prefix:
                 value</var> be the result of running the <a>matched
                 capability serialization algorithm</a> for
                 capability <var>name</var> with
-                argument <var>value</var>.</li>
+                arguments <var>value</var>, and <var>flags</var>.</li>
 
            <li>
              <p>Otherwise, if <var>name</var> is the key of an
@@ -2128,8 +2136,9 @@ with a "<code>moz:</code>" prefix:
          </ul>
     </dl>
 
-   <li><p><a>Set a property</a> on <var>matched capabilities</var>
-    with name <var>name</var> and value <var>match value</var>.
+   <li><p>If <var>match value</var> is not null, set a property</a>
+    on <var>matched capabilities</var> with name <var>name</var> and
+    value <var>match value</var>.
   </ol>
 
  <li><p>Return <a>success</a> with data <var>matched capabilities</var>.
@@ -2229,7 +2238,96 @@ across all sessions.</p>
  configured. The default value of the flag is true if the endpoint
  doesn't support proxy configuration, or false otherwise.</p>
 
-<p>When asked to <dfn>close the session</dfn>,
+<div>
+
+<p>To <dfn>create a session</dfn>, given a JSON
+Object <var>capabilites</var>, and a set <var>flags</var>:
+<ol>
+ <li><p>Let <var>session id</var> be the result of <a>generating a UUID</a>.
+
+ <li><p>Let <var>session</var> be a new <a>session</a> with <a>session
+  ID</a> <var>session id</var>, and <a>HTTP flag</a> <var>flags</var> contains
+  "<code>http</code>".
+
+ <li><p>Let <var>proxy</var> be the result of getting property
+     "<code>proxy</code>" from <var>capabilities</var> and run the
+     substeps of the first matching statement:
+
+       <dl class=switch>
+         <dt><var>proxy</var> is a <a>proxy configuration</a> object</dt>
+         <dd><p>Take implementation-defined steps to set the user agent proxy
+             using the extracted <var>proxy</var> configuration. If the
+             defined proxy cannot be configured return <a>error</a> with
+             <a>error code</a> <a>session not created</a>. Otherwise
+             set the <a>has proxy configuration</a> flag to true.</dd>
+
+         <dt>Otherwise</dt>
+         <dd><a>Set a property</a> of <var>capabilities</var> with name
+           "<code>proxy</code>" and a value that is a new JSON <a>Object</a>.</dd>
+       </dl>
+   </li>
+
+  <li><p>If <var>capabilites</var> has a property named
+  "<code>acceptInsecureCerts</code>", set the <a>endpoint
+  node</a>'s <a>accept insecure TLS</a> flag to the result
+  of <a>getting a property</a> named
+  "<code>acceptInsecureCerts</code>" from <var>capabilities</var>.
+
+  <li><p>If <var>flags</var> <var>contains</var> "<code>http</code>":
+      <ol>
+        <li><p>Let <var>strategy</var> be the result of getting
+            property "<code>pageLoadStrategy</code>"
+            from <var>capabilities</var>. <p>If <var>strategy</var> is
+            a string, set the <a>session</a>’s
+            <a>page loading strategy</a> to <var>strategy</var>.  Otherwise,
+            set the <a>page loading strategy</a> to <i>normal</i> and <a>set a
+              property</a> of <var>capabilities</var> with name
+            "<code>pageLoadStrategy</code>" and value "<code>normal</code>".</p>
+
+        <li><p>Let <var>strictFileInteractability</var> be the result of
+            getting property "<code>strictFileInteractability</code>"
+            from <var>capabilities</var>. If <var>strictFileInteractability</var>
+            is a boolean, set <a>session</a>’s <a>strict file interactability</a> to
+            <var>strictFileInteractability</var>. Otherwise set
+            <a>session</a>’s <a>strict file interactability</a> to false.</p></li>
+
+        <li><p>If <var>capabilities</var> has a property with the key "<code>timeouts</code>":
+
+            <ol>
+              <li><p>Let <var>timeouts</var> be the result of <a>trying</a>
+                  to <a>JSON deserialize</a> as a <a>timeouts configuration</a>
+                  the value of the "<code>timeouts</code>" property.
+
+                  <li><p>Make the <a>session timeouts</a> the new <var>timeouts</var>.
+            </ol>
+
+            <li><p>Set a property on <var>capabilities</var> with name
+                "<code>timeouts</code>" and value that of the
+                <a>JSON deserialization</a> of the <a>session timeouts</a>.
+
+            </li>
+      </ol>
+  </li>
+
+  <li><p>Process any <a>extension capabilities</a>
+  in <var>capabilities</var> in an implementation-defined manner.</li>
+
+  <li><p>Run any <a>WebDriver new session algorithm</a> defined in
+  external specifications, with arguments <var>session</var>,
+  <var>capabilities</var>, and <var>flags</var>.
+
+  <li>Append <var>session</var> to <a>active sessions</a>.
+
+  <li>If <var>flags</var> contains "<code>http</code>",
+   append <var>session</var> to <a>active HTTP sessions</a>.
+
+  <li><p>Set the <a>webdriver-active flag</a> to true.</p>
+ </ol>
+
+</div>
+
+<div>
+<p>To <dfn>close the session</dfn>, given <var>session</var>
  a <a>remote end</a> must take the following steps:
 
 <ol>
@@ -2371,100 +2469,37 @@ variables</var> and <var>parameters</var> are:
    <a>URL prefix</a> of the <a>upstream</a> <a>remote end</a> will need
    to be tracked.
 
- <li><p>If the <a>maximum active sessions</a> is equal to
-  the length of the list of <a>active sessions</a>,
-  return <a>error</a> with <a>error code</a> <a>session not created</a>.
+ <li><p>Let <var>flags</var> be a set containing "<code>http</code>".
 
- <li><p>Let <var>capabilities</var> be the result
-  of <a>trying</a> to <a>process capabilities</a>
-  with <var>parameters</var> as an argument.
+ <li><p>Let <var>capabilities</var> be the result of <a>trying</a>
+  to <a>process capabilities</a> with <var>parameters</var>
+  and <var>flags</var>.
 
  <li><p>If <var>capabilities</var>’s is <a><code>null</code></a>,
   return <a>error</a> with <a>error code</a> <a>session not created</a>.
 
- <li><p>Let <var>session id</var> be the result of <a>generating a UUID</a>.
-
- <li><p>Let <var>session</var> be a new <a>session</a>
-  with the <a>session ID</a> of <var>session id</var>.
-
- <li><p>Set the <a>current session</a> to <var>session</var>.
-
- <li><p>Run any <a>WebDriver new session algorithm</a> defined in
- external specifications, with arguments <var>session</var>
- and <var>capabilities</var>.
-
- <li><p>Append <var>session</var> to <a>active sessions</a>.
+ <li><p>Let <var>session</var> be the result of <a>create a
+ session</a>, with <var>capabilities</var>, and <var>flags</var>.
 
  <li><p>Let <var>body</var> be a JSON <a>Object</a> initialized with:
 
   <dl>
    <dt>"<code>sessionId</code>"
-   <dd><var>session id</var>
+   <dd><var>session</var>'s <a>session ID</a>.
 
    <dt>"<code>capabilities</code>"
    <dd><var>capabilities</var>
   </dl>
 
- <li><p>Initialize the following from <var>capabilities</var>:
-
-  <ol>
-   <li><p>Let <var>strategy</var> be the result of getting property
-    "<code>pageLoadStrategy</code>" from <var>capabilities</var>.
-
-   <li><p>If <var>strategy</var> is a string, set the <a>current session</a>’s
-    <a>page loading strategy</a> to <var>strategy</var>.  Otherwise,
-    set the <a>page loading strategy</a> to <i>normal</i> and <a>set a
-    property</a> of <var>capabilities</var> with name
-    "<code>pageLoadStrategy</code>" and value "<code>normal</code>".
-
-   <li><p>Let <var>strictFileInteractability</var> be the result of getting property
-    "<code>strictFileInteractability</code>" from <var>capabilities</var>.
-
-   <li><p>If <var>strictFileInteractability</var> is a boolean,
-    set the <a>current session</a>’s <a>strict file interactability</a> to
-    <var>strictFileInteractability</var>. Otherwise set the
-    <a>current session</a>’s <a>strict file interactability</a> to false.
-
-   <li><p>Let <var>proxy</var> be the result of getting property
-    "<code>proxy</code>" from <var>capabilities</var> and run the
-    substeps of the first matching statement:
-
-       <dl class=switch>
-         <dt><var>proxy</var> is a <a>proxy configuration</a> object</dt>
-         <dd><p>Take implementation-defined steps to set the user agent proxy
-             using the extracted <var>proxy</var> configuration.  If the
-             defined proxy cannot be configured return <a>error</a> with
-             <a>error code</a> <a>session not created</a>.</dd>
-
-         <dt>Otherwise</dt>
-         <dd><a>Set a property</a> of <var>capabilities</var> with name
-           "<code>proxy</code>" and a value that is a new JSON <a>Object</a>.</dd>
-       </dl>
-   </li>
-
-   <li><p>If <var>capabilities</var> has a property with the key "<code>timeouts</code>":
-
-    <ol>
-     <li><p>Let <var>timeouts</var> be the result of <a>trying</a>
-      to <a>JSON deserialize</a> as a <a>timeouts configuration</a>
-      the value of the "<code>timeouts</code>" property.
-
-     <li><p>Make the <a>session timeouts</a> the new <var>timeouts</var>.
-    </ol>
-
-   <li><p>Set a property on <var>capabilities</var> with name
-    "<code>timeouts</code>" and value that of the
-    <a>JSON deserialization</a> of the <a>session timeouts</a>.
-
-   <li><p>Apply changes to the user agent for any implementation-defined capabilities
-    selected during the <a>capabilities processing</a> step.
-  </ol>
-
- <li><p>Set the <a>webdriver-active flag</a> to true.</p>
-
- <li><p><a>Set the current top-level browsing context</a>
-   for <var>session</var> with the <a>top-level browsing context</a>
-   of the UA’s <a>current browsing context</a>.
+ <li><p>Set the <a>current top-level browsing context</a>
+   of <var>session</var> to one of the <a>endpoint
+   node</a>'s <a>top-level browsing context</a>s, preferring
+   the <a>top level browsing context</a> that
+   has <a href="https://html.spec.whatwg.org/#tlbc-system-focus">system
+   focus</a>, or otherwise preferring any <a>top level browsing
+   context</a> whose
+   <a href=""https://w3c.github.io/page-visibility/#dfn-determine-the-visibility-state>visibility
+   state</a> is <a href="https://w3c.github.io/page-visibility/#dfn-visible">visible</a>.
 
   <p class="note">WebDriver implementations typically start a
    completely new browser instance, but there is no requirement in
@@ -2885,12 +2920,12 @@ Return <a>success</a> with data <a><code>null</code></a>.
    failed DNS lookup.
 
  <dt><a>response</a> is <a>blocked by content security policy</a>
- <dd><p>If the <a>current session</a>’s <a>secure TLS</a> state is disabled,
-  take implementation specific steps to ensure
-  the navigation is not aborted
-  and that the untrusted- or invalid TLS certificate error
-  that would normally occur under these circumstances,
-  are suppressed.
+
+ <dd><p>If the <a>remote end</a>’s <a>accept insecure TLS</a> state is
+  true, take implementation specific steps to ensure the navigation
+  is not aborted and that the untrusted- or invalid TLS certificate
+  error that would normally occur under these circumstances, are
+  suppressed.
 
   <p>Otherwise return <a>error</a> with <a>error code</a> <a>insecure certificate</a>.
 
